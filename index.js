@@ -53,6 +53,12 @@ var MochaReporter = function (baseReporterDecorator, formatError, config) {
     // set diff output
     config.mochaReporter.showDiff = config.mochaReporter.showDiff || false;
 
+    // remove node_modules lines in stack traces
+    config.mochaReporter.removeNodeModules = config.mochaReporter.removeNodeModules || false;
+
+    // remove present working diretory from stack traces
+    config.mochaReporter.removePwd = config.mochaReporter.removePwd || false;
+
     var colors = {
         success: {
             symbol: symbols.success,
@@ -228,8 +234,31 @@ var MochaReporter = function (baseReporterDecorator, formatError, config) {
                 isCompleted = isCompleted && allChildItemsAreCompleted(item.items);
             }
         });
-        
+
         return isCompleted;
+    }
+
+    /**
+     * Removes lines that contain node_modules from a stack trace
+     *
+     * @param {string} trace The stack trace
+     */
+    function removeNodeModules(trace) {
+      return trace.split('\n').filter(function(line) {
+        return line.indexOf('node_modules') == -1;
+      }).join('\n');
+    }
+
+    /**
+     * Remove present working directory from lines in a stack trace
+     *
+     * @param {string} trace The stack trace
+     */
+    function removePwd(trace) {
+      console.error("Replacing PWD -----------------");
+      return trace.split('\n').map(function(line) {
+        return line.replace(process.cwd(), '');
+      }).join('\n');
     }
 
     /**
@@ -360,11 +389,31 @@ var MochaReporter = function (baseReporterDecorator, formatError, config) {
 
                         // print formatted stack trace after diff
                         log.forEach(function (err) {
-                            line += colors.error.print(formatError(err));
+                            if (config.mochaReporter.removeNodeModules) {
+                                err = removeNodeModules(err);
+                            }
+
+                            var errors = colors.error.print(formatError(err));
+
+                            if (config.mochaReporter.removePwd) {
+                                errors = removePwd(errors);
+                            }
+
+                            line += errors;
                         });
                     } else {
                         item.log.forEach(function (err) {
-                            line += colors.error.print(formatError(err, repeatString('  ', depth)));
+                            if (config.mochaReporter.removeNodeModules) {
+                                err = removeNodeModules(err);
+                            }
+
+                            var errors = colors.error.print(formatError(err, repeatString('  ', depth)));
+
+                            if (config.mochaReporter.removePwd) {
+                                errors = removePwd(errors);
+                            }
+
+                            line += errors;
                         });
                     }
                 }
@@ -497,7 +546,7 @@ var MochaReporter = function (baseReporterDecorator, formatError, config) {
 
                 if (item.count === self.numberOfBrowsers) {
                     item.isCompleted = true;
-                    
+
                     // print results to output when test was ran through all browsers
                     if (outputMode !== 'minimal') {
                         print(self.allResults, depth);
