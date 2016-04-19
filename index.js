@@ -255,7 +255,6 @@ var MochaReporter = function (baseReporterDecorator, formatError, config) {
      * @param {string} trace The stack trace
      */
     function removePwd(trace) {
-      console.error("Replacing PWD -----------------");
       return trace.split('\n').map(function(line) {
         return line.replace(process.cwd(), '');
       }).join('\n');
